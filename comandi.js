@@ -22,6 +22,104 @@ function hasAdminRole(member) {
   return member.roles.cache.has(idDirettore) || member.roles.cache.has(idCEO);
 }
 
+function buildFattureResoconto() {
+  const allFatture = db.getAllFatture();
+  const fattureAttive = allFatture.filter(f => f.stato === 'ATTIVA');
+  const fattureAnnullate = allFatture.filter(f => f.stato === 'ANNULLATA');
+
+  const totaleAttivo = fattureAttive.reduce((sum, f) => sum + f.prezzo, 0);
+  const totaleFatture = allFatture.length;
+
+  const classiFatture = {};
+  fattureAttive.forEach(f => {
+    if (!classiFatture[f.userId]) {
+      classiFatture[f.userId] = { userName: f.userName, count: 0, total: 0 };
+    }
+    classiFatture[f.userId].count += 1;
+    classiFatture[f.userId].total += f.prezzo;
+  });
+
+  const rankingFatture = Object.entries(classiFatture)
+    .sort((a, b) => b[1].count - a[1].count || b[1].total - a[1].total)
+    .slice(0, 10);
+
+  const timbrature = db.getAllTimbrature().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const orePerUtente = {};
+  const ultimoIn = {};
+
+  timbrature.forEach(t => {
+    if (t.azione === 'IN') {
+      ultimoIn[t.userId] = { userName: t.userName, start: new Date(t.timestamp) };
+    } else if (t.azione === 'OUT' && ultimoIn[t.userId]) {
+      const inTime = ultimoIn[t.userId].start;
+      const outTime = new Date(t.timestamp);
+      const ore = Math.max(0, (outTime - inTime) / (1000 * 60 * 60));
+      if (!orePerUtente[t.userId]) {
+        orePerUtente[t.userId] = { userName: t.userName, ore: 0 };
+      }
+      orePerUtente[t.userId].ore += ore;
+      delete ultimoIn[t.userId];
+    }
+  });
+
+  const rankingOre = Object.entries(orePerUtente)
+    .sort((a, b) => b[1].ore - a[1].ore)
+    .slice(0, 10);
+
+  let descrizione = '═══════════════════════════════════════\n';
+  descrizione += '💰 **RESOCONTO FATTURE COMPLETO** 💰\n';
+  descrizione += '═══════════════════════════════════════\n\n';
+  descrizione += `📋 **Fatture totali:** ${totaleFatture}\n`;
+  descrizione += `✅ **Attive:** ${fattureAttive.length}\n`;
+  descrizione += `❌ **Annullate:** ${fattureAnnullate.length}\n`;
+  descrizione += `💵 **Totale attivo:** €${totaleAttivo.toFixed(2)}\n`;
+  descrizione += `📈 **Media per fattura attiva:** €${(fattureAttive.length ? (totaleAttivo / fattureAttive.length).toFixed(2) : 0).toFixed(2)}\n\n`;
+
+  descrizione += '═══════════════════════════════════════\n';
+  descrizione += '🏆 **TOP FATTURE** 🏆\n';
+  descrizione += '═══════════════════════════════════════\n\n';
+
+  if (rankingFatture.length === 0) {
+    descrizione += 'Nessuna fattura attiva da classificare.\n';
+  } else {
+    rankingFatture.forEach(([userId, data], index) => {
+      const position = index + 1;
+      let medal = '🥇';
+      if (position === 2) medal = '🥈';
+      if (position === 3) medal = '🥉';
+      if (position > 3) medal = `${position}️⃣`;
+      descrizione += `${medal} **${data.userName}** - ${data.count} fatture | €${data.total.toFixed(2)}\n`;
+    });
+  }
+
+  descrizione += '\n═══════════════════════════════════════\n';
+  descrizione += '⏱️ **TOP ORE SERVIZIO** ⏱️\n';
+  descrizione += '═══════════════════════════════════════\n\n';
+
+  if (rankingOre.length === 0) {
+    descrizione += 'Nessuna timbratura valida per calcolare le ore.\n';
+  } else {
+    rankingOre.forEach(([userId, data], index) => {
+      const position = index + 1;
+      let medal = '🥇';
+      if (position === 2) medal = '🥈';
+      if (position === 3) medal = '🥉';
+      if (position > 3) medal = `${position}️⃣`;
+      descrizione += `${medal} **${data.userName}** - ${data.ore.toFixed(2)} ore\n`;
+    });
+  }
+
+  descrizione += '\n═══════════════════════════════════════';
+
+  return createEmbed(
+    '🧾 RESOCONTO FATTURE - REPORT COMPLETO',
+    descrizione,
+    '#FFD700'
+  ).addFields(
+    { name: '📅 Generato il', value: new Date().toLocaleString('it-IT'), inline: false }
+  );
+}
+
 // ============================================
 // COMANDO: /menu
 // ============================================
@@ -340,7 +438,15 @@ async function handleCommands(interaction) {
         .setLabel('👥 Servizio')
         .setStyle(ButtonStyle.Primary);
 
+      const btnResoconto = new ButtonBuilder()
+        .setCustomId('btn_resoconto')
+        .setLabel('📄 Resoconto Fatture')
+        .setStyle(ButtonStyle.Secondary);
+
       const row1 = new ActionRowBuilder().addComponents(btnTimbrareIn, btnTimbrareOut, btnInfo, btnServizio);
+      if (hasAdminRole(member)) {
+        row1.addComponents(btnResoconto);
+      }
 
       const embed = createEmbed(
         '🎫 CARTELLINO - BOT GALAXY',
@@ -352,6 +458,9 @@ async function handleCommands(interaction) {
           { name: '📊 Info', value: 'Visualizza le tue statistiche' },
           { name: '👥 Servizio', value: 'Vedi chi è attualmente in servizio' }
         );
+      if (hasAdminRole(member)) {
+        embed.addFields({ name: '🧾 Resoconto Fatture', value: 'Direttore e CEO possono usare il pulsante qui sopra o /fattureresoconto' });
+      }
 
       return interaction.reply({ embeds: [embed], components: [row1] });
     }
@@ -818,109 +927,7 @@ async function handleCommands(interaction) {
         return interaction.reply({ embeds: [embed], ephemeral: true });
       }
 
-      // Recupera tutte le fatture attive
-      const allFatture = db.getAllFatture();
-      const fattureAttive = allFatture.filter(f => f.stato === 'ATTIVA');
-      
-      if (fattureAttive.length === 0) {
-        const embed = createEmbed(
-          '📋 Resoconto Fatture',
-          '❌ Nessuna fattura attiva',
-          '#ff6600'
-        );
-        return interaction.reply({ embeds: [embed], ephemeral: false });
-      }
-
-      // Calcolo totale fatture
-      const totaleGeneral = fattureAttive.reduce((sum, f) => sum + f.prezzo, 0);
-
-      // Classifica per numero di fatture
-      const classiFatture = {};
-      fattureAttive.forEach(f => {
-        if (!classiFatture[f.userId]) {
-          classiFatture[f.userId] = { userName: f.userName, count: 0, total: 0 };
-        }
-        classiFatture[f.userId].count += 1;
-        classiFatture[f.userId].total += f.prezzo;
-      });
-
-      // Ordina per numero di fatture
-      const rankingFatture = Object.entries(classiFatture)
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 10);
-
-      // Classifica per ore lavorate
-      const allTimbrature = db.getAllTimbrature();
-      const orePerUtente = {};
-      
-      for (let i = 0; i < allTimbrature.length; i += 2) {
-        if (allTimbrature[i] && allTimbrature[i].azione === 'IN' && allTimbrature[i + 1] && allTimbrature[i + 1].azione === 'OUT') {
-          const userId = allTimbrature[i].userId;
-          const userName = allTimbrature[i].userName;
-          const inTime = new Date(allTimbrature[i].timestamp);
-          const outTime = new Date(allTimbrature[i + 1].timestamp);
-          const ore = (outTime - inTime) / (1000 * 60 * 60);
-
-          if (!orePerUtente[userId]) {
-            orePerUtente[userId] = { userName: userName, ore: 0 };
-          }
-          orePerUtente[userId].ore += ore;
-        }
-      }
-
-      const rankingOre = Object.entries(orePerUtente)
-        .sort((a, b) => b[1].ore - a[1].ore)
-        .slice(0, 10);
-
-      // Costruisci la risposta con decorazioni
-      let descrizione = '═══════════════════════════════════════\n';
-      descrizione += '💰 **RIEPILOGO GENERALE FATTURE** 💰\n';
-      descrizione += '═══════════════════════════════════════\n\n';
-      descrizione += `📊 **Numero fatture totali:** ${fattureAttive.length}\n`;
-      descrizione += `💵 **Importo totale:** €${totaleGeneral.toFixed(2)}\n`;
-      descrizione += `📈 **Media per fattura:** €${(totaleGeneral / fattureAttive.length).toFixed(2)}\n\n`;
-
-      // Classifica Fatture
-      descrizione += '═══════════════════════════════════════\n';
-      descrizione += '🏆 **CLASSIFICA - CHI HA FATTO PIÙ FATTURE** 🏆\n';
-      descrizione += '═══════════════════════════════════════\n\n';
-      
-      rankingFatture.forEach((entry, index) => {
-        const [userId, data] = entry;
-        const position = index + 1;
-        let medal = '🥇';
-        if (position === 2) medal = '🥈';
-        if (position === 3) medal = '🥉';
-        if (position > 3) medal = `${position}️⃣`;
-
-        descrizione += `${medal} **${data.userName}** - ${data.count} fatture | €${data.total.toFixed(2)}\n`;
-      });
-
-      descrizione += '\n═══════════════════════════════════════\n';
-      descrizione += '⏱️ **CLASSIFICA - ORE LAVORATE** ⏱️\n';
-      descrizione += '═══════════════════════════════════════\n\n';
-
-      rankingOre.forEach((entry, index) => {
-        const [userId, data] = entry;
-        const position = index + 1;
-        let medal = '🥇';
-        if (position === 2) medal = '🥈';
-        if (position === 3) medal = '🥉';
-        if (position > 3) medal = `${position}️⃣`;
-
-        descrizione += `${medal} **${data.userName}** - ${data.ore.toFixed(2)} ore\n`;
-      });
-
-      descrizione += '\n═══════════════════════════════════════';
-
-      const embed = createEmbed(
-        '🧾 RESOCONTO FATTURE - REPORT COMPLETO',
-        descrizione,
-        '#FFD700'
-      ).addFields(
-        { name: '📅 Data Generazione', value: new Date().toLocaleString('it-IT'), inline: false }
-      );
-
+      const embed = buildFattureResoconto();
       return interaction.reply({ embeds: [embed], ephemeral: false });
     }
   } catch (error) {
@@ -934,4 +941,4 @@ async function handleCommands(interaction) {
   }
 }
 
-module.exports = { commands, handleCommands };
+module.exports = { commands, handleCommands, buildFattureResoconto };

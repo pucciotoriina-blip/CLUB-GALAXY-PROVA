@@ -292,6 +292,20 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.reply({ embeds: [embed], ephemeral: true });
       }
 
+      if (interaction.customId === 'btn_resoconto') {
+        if (!member.roles.cache.has(process.env.ID_RUOLO_DIRETTORE) && !member.roles.cache.has(process.env.ID_RUOLO_CEO)) {
+          const embed = createEmbed(
+            '❌ Permesso Negato',
+            'Solo Direttore e CEO possono accedere al resoconto fatture',
+            '#ff0000'
+          );
+          return interaction.reply({ embeds: [embed], ephemeral: true });
+        }
+
+        const embed = buildFattureResoconto();
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
       // Registra Vendita Button
       if (interaction.customId === 'btn_registra_vendita') {
         const modal = new ModalBuilder()
