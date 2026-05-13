@@ -378,15 +378,7 @@ async function handleCommands(interaction) {
         .setLabel('👥 Servizio')
         .setStyle(ButtonStyle.Primary);
 
-      const btnResoconto = new ButtonBuilder()
-        .setCustomId('btn_resoconto')
-        .setLabel('📄 Resoconto Fatture')
-        .setStyle(ButtonStyle.Secondary);
-
       const row1 = new ActionRowBuilder().addComponents(btnTimbrareIn, btnTimbrareOut, btnInfo, btnServizio);
-      if (hasAdminRole(member)) {
-        row1.addComponents(btnResoconto);
-      }
 
       const embed = createEmbed(
         '🎫 CARTELLINO - BOT GALAXY',
@@ -398,10 +390,6 @@ async function handleCommands(interaction) {
           { name: '📊 Info', value: 'Visualizza le tue statistiche' },
           { name: '👥 Servizio', value: 'Vedi chi è attualmente in servizio' }
         );
-      if (hasAdminRole(member)) {
-        embed.addFields({ name: '🧾 Resoconto Fatture', value: 'Direttore e CEO possono usare il pulsante qui sopra o /fattureresoconto' });
-      }
-
       return interaction.reply({ embeds: [embed], components: [row1] });
     }
 
