@@ -1,0 +1,15 @@
+{
+  "timbrature": [],
+  "vendite": [],
+  "magazzino": {
+    "medikit": 0,
+    "sole_bende": 0
+  },
+  "dispensa": {
+    "bevande": 0,
+    "cibo": 0,
+    "alcolici": 0,
+    "gratta_vinci": 0
+  },
+  "fatture": []
+}

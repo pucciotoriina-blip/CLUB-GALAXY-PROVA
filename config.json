@@ -1,0 +1,44 @@
+{
+  "bot": {
+    "name": "BOT GALAZY",
+    "version": "1.0.0",
+    "color": "#FFD700"
+  },
+  "categorie_dipendenti": [
+    "barista",
+    "security",
+    "ballerina"
+  ],
+  "prodotti_magazzino": [
+    {
+      "id": "medikit",
+      "nome": "Medikit",
+      "emoji": "🩺"
+    },
+    {
+      "id": "sole_bende",
+      "nome": "Sole Bende",
+      "emoji": "🩹"
+    }
+  ],
+  "colori": {
+    "success": "#00ff00",
+    "error": "#ff0000",
+    "warning": "#ff6600",
+    "info": "#0099ff",
+    "primary": "#3498db",
+    "gold": "#FFD700"
+  },
+  "emoji": {
+    "check": "✅",
+    "error": "❌",
+    "warning": "⚠️",
+    "info": "ℹ️",
+    "timbratura": "🎫",
+    "vendite": "💰",
+    "magazzino": "📦",
+    "fatture": "🧾",
+    "statistiche": "📊",
+    "servizio": "👥"
+  }
+}
