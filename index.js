@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, REST, Routes } = require('discord.js');
 const dotenv = require('dotenv');
 const db = require('./database');
-const { commands, handleCommands } = require('./comandi');
+const { commands, handleCommands, buildFattureResoconto } = require('./comandi');
 
 dotenv.config();
 
@@ -102,12 +102,12 @@ function createDispensaPanel(stock) {
 
   const btnPrendiGratta = new ButtonBuilder()
     .setCustomId('disp_prendi_gratta_vinci')
-    .setLabel('🎟️ Prendi Gratta e Vinci')
+    .setLabel('🎲 Prendi Fiches')
     .setStyle(ButtonStyle.Secondary);
 
   const btnRimettiGratta = new ButtonBuilder()
     .setCustomId('disp_rimetti_gratta_vinci')
-    .setLabel('🎟️ Rimetti Gratta e Vinci')
+    .setLabel('🎲 Rimetti Fiches')
     .setStyle(ButtonStyle.Success);
 
   const row1 = new ActionRowBuilder().addComponents(btnPrendiBevande, btnRimettiBevande, btnPrendiAlcolici, btnRimettiAlcolici);
@@ -118,7 +118,7 @@ function createDispensaPanel(stock) {
     `**🥤 Bevande:** ${stock.bevande}\n` +
     `**🍽️ Cibo:** ${stock.cibo}\n` +
     `**🍺 Alcolici:** ${stock.alcolici}\n` +
-    `**🎟️ Gratta e Vinci:** ${stock.gratta_vinci}`,
+    `**🎲 Fiches:** ${stock.gratta_vinci}`,
     '#8e44ad'
   );
 
@@ -413,7 +413,7 @@ client.on('interactionCreate', async (interaction) => {
           bevande: 'Bevande',
           cibo: 'Cibo',
           alcolici: 'Alcolici',
-          gratta_vinci: 'Gratta e Vinci'
+          gratta_vinci: 'Fiches'
         };
         const nomeProdotto = nomeProdotti[prodotto] || prodotto;
         const isRimetti = interaction.customId.startsWith('disp_rimetti_');
@@ -497,7 +497,7 @@ client.on('interactionCreate', async (interaction) => {
           bevande: 'Bevande',
           cibo: 'Cibo',
           alcolici: 'Alcolici',
-          gratta_vinci: 'Gratta e Vinci'
+          gratta_vinci: 'Fiches'
         };
         const nomeProdotto = nomeProdotti[prodotto] || prodotto;
 
@@ -527,7 +527,7 @@ client.on('interactionCreate', async (interaction) => {
         const embed = createEmbed(
           `✅ ${interaction.user.tag} ha ${isRimetti ? 'rimesso' : 'prelevato'} ${quantita} ${nomeProdotto}${quantita > 1 ? '(e)' : ''}`,
           `**Utente:** <@${interaction.user.id}> (${interaction.user.tag})\n\n` +
-          `**Adesso lo stock dispensa è:**\n🥤 Bevande: ${stock.bevande}\n🍽️ Cibo: ${stock.cibo}\n🍺 Alcolici: ${stock.alcolici}\n🎟️ Gratta e Vinci: ${stock.gratta_vinci}`,
+          `**Adesso lo stock dispensa è:**\n🥤 Bevande: ${stock.bevande}\n🍽️ Cibo: ${stock.cibo}\n🍺 Alcolici: ${stock.alcolici}\n🎲 Fiches: ${stock.gratta_vinci}`,
           isRimetti ? '#00ff00' : '#ffcc00'
         );
 
@@ -552,19 +552,6 @@ client.on('interactionCreate', async (interaction) => {
         );
 
         // Mostra recap della vendita e apri modulo fattura
-        const embed = createEmbed(
-          `✅ ${interaction.user.tag} ha registrato la vendita`,
-          `**ID Vendita:** \`${vendita.id}\`
-**Utente:** <@${interaction.user.id}> (${interaction.user.tag})
-**Articolo:** ${cosa}
-**Prezzo:** €${prezzo}
-**Convenzione:** ${convenzione}
-**Società:** ${societa || 'N/D'}`,
-          '#00ff00'
-        );
-
-        await interaction.reply({ embeds: [embed], ephemeral: false });
-
         // Apri modulo fattura
         const modalFattura = new ModalBuilder()
           .setCustomId(`modal_fattura_${vendita.id}`)

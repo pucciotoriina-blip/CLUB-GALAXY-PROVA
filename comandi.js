@@ -140,15 +140,8 @@ commands.push(
 
 commands.push(
   new SlashCommandBuilder()
-    .setName('magazzino')
-    .setDescription('Mostra lo stato del magazzino')
-    .toJSON()
-);
-
-commands.push(
-  new SlashCommandBuilder()
     .setName('dispensa')
-    .setDescription('Mostra lo stato della dispensa (bevande e cibo)')
+    .setDescription('Mostra lo stato della dispensa (bevande, cibo, alcolici e fiches)')
     .toJSON()
 );
 
@@ -165,7 +158,7 @@ commands.push(
           { name: 'Bevande', value: 'bevande' },
           { name: 'Cibo', value: 'cibo' },
           { name: 'Alcolici', value: 'alcolici' },
-          { name: 'Gratta e Vinci', value: 'gratta_vinci' }
+          { name: 'Fiches', value: 'gratta_vinci' }
         )
     )
     .addIntegerOption(option =>
@@ -190,7 +183,7 @@ commands.push(
           { name: 'Bevande', value: 'bevande' },
           { name: 'Cibo', value: 'cibo' },
           { name: 'Alcolici', value: 'alcolici' },
-          { name: 'Gratta e Vinci', value: 'gratta_vinci' }
+          { name: 'Fiches', value: 'gratta_vinci' }
         )
     )
     .addIntegerOption(option =>
@@ -280,59 +273,6 @@ commands.push(
     .toJSON()
 );
 
-// ============================================
-// COMANDO: /riforniscimagazzino (Solo Direttore/CEO)
-// ============================================
-
-commands.push(
-  new SlashCommandBuilder()
-    .setName('aggiornastack')
-    .setDescription('Aggiorna lo stock Club Galaxy nel magazzino')
-    .addStringOption(option =>
-      option
-        .setName('prodotto')
-        .setDescription('Prodotto Club Galaxy')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Medikit', value: 'medikit' },
-          { name: 'Sole Bende', value: 'sole_bende' }
-        )
-    )
-    .addIntegerOption(option =>
-      option
-        .setName('quantita')
-        .setDescription('Quantità da aggiungere')
-        .setRequired(true)
-    )
-    .toJSON()
-);
-
-// ============================================
-// COMANDO: /tolgiestock (Solo Direttore/CEO)
-// ============================================
-
-commands.push(
-  new SlashCommandBuilder()
-    .setName('tolgiestock')
-    .setDescription('Rimuovi stock Club Galaxy dal magazzino')
-    .addStringOption(option =>
-      option
-        .setName('prodotto')
-        .setDescription('Prodotto Club Galaxy')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Medikit', value: 'medikit' },
-          { name: 'Sole Bende', value: 'sole_bende' }
-        )
-    )
-    .addIntegerOption(option =>
-      option
-        .setName('quantita')
-        .setDescription('Quantità da rimuovere')
-        .setRequired(true)
-    )
-    .toJSON()
-);
 
 // ============================================
 // COMANDO: /annulla (Tutti)
@@ -492,45 +432,6 @@ async function handleCommands(interaction) {
       return interaction.reply({ embeds: [embed], components: [row], ephemeral: false });
     }
 
-    // ===== /magazzino =====
-    if (command === 'magazzino') {
-      const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-      const stock = db.getAllStock();
-
-      const btnPrendiMedikit = new ButtonBuilder()
-        .setCustomId('mag_prendi_medikit')
-        .setLabel('🩺 Prendi Medikit')
-        .setStyle(ButtonStyle.Secondary);
-
-      const btnRimettiMedikit = new ButtonBuilder()
-        .setCustomId('mag_rimetti_medikit')
-        .setLabel('🩺 Rimetti Medikit')
-        .setStyle(ButtonStyle.Success);
-
-      const btnPrendiSoleBende = new ButtonBuilder()
-        .setCustomId('mag_prendi_sole_bende')
-        .setLabel('🩹 Prendi Bende')
-        .setStyle(ButtonStyle.Secondary);
-
-      const btnRimettiSoleBende = new ButtonBuilder()
-        .setCustomId('mag_rimetti_sole_bende')
-        .setLabel('🩹 Rimetti Bende')
-        .setStyle(ButtonStyle.Success);
-
-      const row1 = new ActionRowBuilder().addComponents(btnPrendiMedikit, btnRimettiMedikit);
-      const row2 = new ActionRowBuilder().addComponents(btnPrendiSoleBende, btnRimettiSoleBende);
-
-      const embed = createEmbed(
-        '📦 Magazzino Club Galaxy',
-        `**🩺 Medikit:** ${stock.medikit}\n` +
-        `**🩹 Bende:** ${stock.sole_bende}\n\n` +
-        'Usa i pulsanti sotto per prendere o rimettere gli oggetti.',
-        '#3498db'
-      );
-
-      return interaction.reply({ embeds: [embed], components: [row1, row2], ephemeral: false });
-    }
-
     // ===== /dispensa =====
     if (command === 'dispensa') {
       const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
@@ -568,12 +469,12 @@ async function handleCommands(interaction) {
 
       const btnPrendiGratta = new ButtonBuilder()
         .setCustomId('disp_prendi_gratta_vinci')
-        .setLabel('🎟️ Prendi Gratta e Vinci')
+        .setLabel('� Prendi Fiches')
         .setStyle(ButtonStyle.Secondary);
 
       const btnRimettiGratta = new ButtonBuilder()
         .setCustomId('disp_rimetti_gratta_vinci')
-        .setLabel('🎟️ Rimetti Gratta e Vinci')
+        .setLabel('🎲 Rimetti Fiches')
         .setStyle(ButtonStyle.Success);
 
       const row1 = new ActionRowBuilder().addComponents(btnPrendiBevande, btnRimettiBevande, btnPrendiAlcolici, btnRimettiAlcolici);
@@ -584,7 +485,7 @@ async function handleCommands(interaction) {
         `**🥤 Bevande:** ${stock.bevande}\n` +
         `**🍽️ Cibo:** ${stock.cibo}\n` +
         `**🍺 Alcolici:** ${stock.alcolici}\n` +
-        `**🎟️ Gratta e Vinci:** ${stock.gratta_vinci}`,
+        `**🎲 Fiches:** ${stock.gratta_vinci}`,
         '#8e44ad'
       );
       return interaction.reply({ embeds: [embed], components: [row1, row2], ephemeral: false });
@@ -706,52 +607,6 @@ async function handleCommands(interaction) {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    // ===== /aggiornastack =====
-    if (command === 'aggiornastack') {
-      if (!hasAdminRole(member)) {
-        const embed = createEmbed(
-          '❌ Permesso Negato',
-          'Solo Direttore e CEO possono usare questo comando',
-          '#ff0000'
-        );
-        return interaction.reply({ embeds: [embed], ephemeral: true });
-      }
-
-      const prodotto = interaction.options.getString('prodotto');
-      const quantita = interaction.options.getInteger('quantita');
-      const nuovoStock = db.aggiungiStock(prodotto, quantita);
-
-      const embed = createEmbed(
-        '✅ Stock Aggiornato',
-        `**${prodotto === 'medikit' ? 'Medikit' : 'Bende'}** → +${quantita}\n**Nuovo stock:** ${nuovoStock}`,
-        '#00ff00'
-      );
-      return interaction.reply({ embeds: [embed], ephemeral: true });
-    }
-
-    // ===== /tolgiestock =====
-    if (command === 'tolgiestock') {
-      if (!hasAdminRole(member)) {
-        const embed = createEmbed(
-          '❌ Permesso Negato',
-          'Solo Direttore e CEO possono usare questo comando',
-          '#ff0000'
-        );
-        return interaction.reply({ embeds: [embed], ephemeral: true });
-      }
-
-      const prodotto = interaction.options.getString('prodotto');
-      const quantita = interaction.options.getInteger('quantita');
-      const nuovoStock = db.togliStock(prodotto, quantita);
-
-      const embed = createEmbed(
-        '✅ Stock Rimosso',
-        `**${prodotto === 'medikit' ? 'Medikit' : 'Bende'}** → -${quantita}\n**Nuovo stock:** ${nuovoStock}`,
-        '#ff6600'
-      );
-      return interaction.reply({ embeds: [embed], ephemeral: true });
-    }
-
     // ===== /aggiungiore =====
     if (command === 'aggiungiore') {
       if (!hasAdminRole(member)) {
@@ -793,54 +648,6 @@ async function handleCommands(interaction) {
         '✅ Ore Tolte',
         `**${dipendente.username}** → -${ore} ore`,
         '#ff6600'
-      );
-      return interaction.reply({ embeds: [embed], ephemeral: true });
-    }
-
-    // ===== /riforniscimagazzino =====
-    if (command === 'riforniscimagazzino') {
-      if (!hasAdminRole(member)) {
-        const embed = createEmbed(
-          '❌ Permesso Negato',
-          'Solo Direttore e CEO possono usare questo comando',
-          '#ff0000'
-        );
-        return interaction.reply({ embeds: [embed], ephemeral: true });
-      }
-
-      const prodotto = interaction.options.getString('prodotto');
-      const quantita = interaction.options.getInteger('quantita');
-
-      const nuovoStock = db.aggiungiStock(prodotto, quantita);
-
-      const embed = createEmbed(
-        '✅ Stock Aggiunto',
-        `**${prodotto}** → +${quantita}\n**Nuovo stock:** ${nuovoStock}`,
-        '#00ff00'
-      );
-      return interaction.reply({ embeds: [embed], ephemeral: true });
-    }
-
-    // ===== /levastock =====
-    if (command === 'levastock') {
-      if (!hasAdminRole(member)) {
-        const embed = createEmbed(
-          '❌ Permesso Negato',
-          'Solo Direttore e CEO possono usare questo comando',
-          '#ff0000'
-        );
-        return interaction.reply({ embeds: [embed], ephemeral: true });
-      }
-
-      const prodotto = interaction.options.getString('prodotto');
-      const quantita = interaction.options.getInteger('quantita');
-
-      const nuovoStock = db.togliStock(prodotto, quantita);
-
-      const embed = createEmbed(
-        '✅ Stock Rimosso',
-        `**${prodotto}** → -${quantita}\n**Nuovo stock:** ${nuovoStock}`,
-        '#ff0000'
       );
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
