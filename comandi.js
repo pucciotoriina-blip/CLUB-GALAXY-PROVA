@@ -294,6 +294,17 @@ commands.push(
 );
 
 // ============================================
+// COMANDO: /fattureresoconto (Solo Direttore/CEO)
+// ============================================
+
+commands.push(
+  new SlashCommandBuilder()
+    .setName('fattureresoconto')
+    .setDescription('Visualizza il resoconto completo delle fatture (Solo CEO e Direttore)')
+    .toJSON()
+);
+
+// ============================================
 // FUNZIONE PER GESTIRE I COMANDI
 // ============================================
 
@@ -794,6 +805,123 @@ async function handleCommands(interaction) {
         '#00ff00'
       );
       return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    // ===== /fattureresoconto (Solo Direttore/CEO) =====
+    if (command === 'fattureresoconto') {
+      if (!hasAdminRole(member)) {
+        const embed = createEmbed(
+          '❌ Permesso Negato',
+          'Solo Direttore e CEO possono accedere al resoconto fatture',
+          '#ff0000'
+        );
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
+      // Recupera tutte le fatture attive
+      const allFatture = db.getAllFatture();
+      const fattureAttive = allFatture.filter(f => f.stato === 'ATTIVA');
+      
+      if (fattureAttive.length === 0) {
+        const embed = createEmbed(
+          '📋 Resoconto Fatture',
+          '❌ Nessuna fattura attiva',
+          '#ff6600'
+        );
+        return interaction.reply({ embeds: [embed], ephemeral: false });
+      }
+
+      // Calcolo totale fatture
+      const totaleGeneral = fattureAttive.reduce((sum, f) => sum + f.prezzo, 0);
+
+      // Classifica per numero di fatture
+      const classiFatture = {};
+      fattureAttive.forEach(f => {
+        if (!classiFatture[f.userId]) {
+          classiFatture[f.userId] = { userName: f.userName, count: 0, total: 0 };
+        }
+        classiFatture[f.userId].count += 1;
+        classiFatture[f.userId].total += f.prezzo;
+      });
+
+      // Ordina per numero di fatture
+      const rankingFatture = Object.entries(classiFatture)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 10);
+
+      // Classifica per ore lavorate
+      const allTimbrature = db.getAllTimbrature();
+      const orePerUtente = {};
+      
+      for (let i = 0; i < allTimbrature.length; i += 2) {
+        if (allTimbrature[i] && allTimbrature[i].azione === 'IN' && allTimbrature[i + 1] && allTimbrature[i + 1].azione === 'OUT') {
+          const userId = allTimbrature[i].userId;
+          const userName = allTimbrature[i].userName;
+          const inTime = new Date(allTimbrature[i].timestamp);
+          const outTime = new Date(allTimbrature[i + 1].timestamp);
+          const ore = (outTime - inTime) / (1000 * 60 * 60);
+
+          if (!orePerUtente[userId]) {
+            orePerUtente[userId] = { userName: userName, ore: 0 };
+          }
+          orePerUtente[userId].ore += ore;
+        }
+      }
+
+      const rankingOre = Object.entries(orePerUtente)
+        .sort((a, b) => b[1].ore - a[1].ore)
+        .slice(0, 10);
+
+      // Costruisci la risposta con decorazioni
+      let descrizione = '═══════════════════════════════════════\n';
+      descrizione += '💰 **RIEPILOGO GENERALE FATTURE** 💰\n';
+      descrizione += '═══════════════════════════════════════\n\n';
+      descrizione += `📊 **Numero fatture totali:** ${fattureAttive.length}\n`;
+      descrizione += `💵 **Importo totale:** €${totaleGeneral.toFixed(2)}\n`;
+      descrizione += `📈 **Media per fattura:** €${(totaleGeneral / fattureAttive.length).toFixed(2)}\n\n`;
+
+      // Classifica Fatture
+      descrizione += '═══════════════════════════════════════\n';
+      descrizione += '🏆 **CLASSIFICA - CHI HA FATTO PIÙ FATTURE** 🏆\n';
+      descrizione += '═══════════════════════════════════════\n\n';
+      
+      rankingFatture.forEach((entry, index) => {
+        const [userId, data] = entry;
+        const position = index + 1;
+        let medal = '🥇';
+        if (position === 2) medal = '🥈';
+        if (position === 3) medal = '🥉';
+        if (position > 3) medal = `${position}️⃣`;
+
+        descrizione += `${medal} **${data.userName}** - ${data.count} fatture | €${data.total.toFixed(2)}\n`;
+      });
+
+      descrizione += '\n═══════════════════════════════════════\n';
+      descrizione += '⏱️ **CLASSIFICA - ORE LAVORATE** ⏱️\n';
+      descrizione += '═══════════════════════════════════════\n\n';
+
+      rankingOre.forEach((entry, index) => {
+        const [userId, data] = entry;
+        const position = index + 1;
+        let medal = '🥇';
+        if (position === 2) medal = '🥈';
+        if (position === 3) medal = '🥉';
+        if (position > 3) medal = `${position}️⃣`;
+
+        descrizione += `${medal} **${data.userName}** - ${data.ore.toFixed(2)} ore\n`;
+      });
+
+      descrizione += '\n═══════════════════════════════════════';
+
+      const embed = createEmbed(
+        '🧾 RESOCONTO FATTURE - REPORT COMPLETO',
+        descrizione,
+        '#FFD700'
+      ).addFields(
+        { name: '📅 Data Generazione', value: new Date().toLocaleString('it-IT'), inline: false }
+      );
+
+      return interaction.reply({ embeds: [embed], ephemeral: false });
     }
   } catch (error) {
     console.error('Errore nel comando:', error);
