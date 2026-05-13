@@ -218,6 +218,7 @@ client.on('interactionCreate', async (interaction) => {
       const userId = interaction.user.id;
       const userName = interaction.user.username;
       const userTag = interaction.user.tag;
+      const member = interaction.member;
 
       // Timbrare IN
       if (interaction.customId === 'btn_timbrare_in') {
@@ -341,6 +342,33 @@ client.on('interactionCreate', async (interaction) => {
 
         modal.addComponents(row1, row2, row3, row4);
         await interaction.showModal(modal);
+      }
+
+      // Crea Fattura Button
+      if (interaction.customId.startsWith('btn_crea_fattura_')) {
+        const venditaId = interaction.customId.replace('btn_crea_fattura_', '');
+
+        const modalFattura = new ModalBuilder()
+          .setCustomId(`modal_fattura_${venditaId}`)
+          .setTitle('Conferma Fattura');
+
+        const numeroFatturaInput = new TextInputBuilder()
+          .setCustomId('fattura_numero')
+          .setLabel('Numero Fattura')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        const noteInput = new TextInputBuilder()
+          .setCustomId('fattura_note')
+          .setLabel('Note (opzionale)')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(false);
+
+        const rowF1 = new ActionRowBuilder().addComponents(numeroFatturaInput);
+        const rowF2 = new ActionRowBuilder().addComponents(noteInput);
+
+        modalFattura.addComponents(rowF1, rowF2);
+        await interaction.showModal(modalFattura);
       }
 
       // Magazzino
@@ -551,29 +579,21 @@ client.on('interactionCreate', async (interaction) => {
           societa
         );
 
-        // Mostra recap della vendita e apri modulo fattura
-        // Apri modulo fattura
-        const modalFattura = new ModalBuilder()
-          .setCustomId(`modal_fattura_${vendita.id}`)
-          .setTitle('Conferma Fattura');
+        // Mostra recap della vendita
+        const embed = createEmbed(
+          '✅ Vendita Registrata',
+          `**Cosa:** ${cosa}\n**Prezzo:** €${prezzo}\n**Convenzione:** ${convenzione}\n**Società:** ${societa || 'N/A'}\n\nUsa il pulsante sotto per creare la fattura.`,
+          '#00ff00'
+        );
 
-        const numeroFatturaInput = new TextInputBuilder()
-          .setCustomId('fattura_numero')
-          .setLabel('Numero Fattura')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
+        const btnCreaFattura = new ButtonBuilder()
+          .setCustomId(`btn_crea_fattura_${vendita.id}`)
+          .setLabel('📄 Crea Fattura')
+          .setStyle(ButtonStyle.Primary);
 
-        const noteInput = new TextInputBuilder()
-          .setCustomId('fattura_note')
-          .setLabel('Note (opzionale)')
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false);
+        const row = new ActionRowBuilder().addComponents(btnCreaFattura);
 
-        const rowF1 = new ActionRowBuilder().addComponents(numeroFatturaInput);
-        const rowF2 = new ActionRowBuilder().addComponents(noteInput);
-
-        modalFattura.addComponents(rowF1, rowF2);
-        await interaction.showModal(modalFattura);
+        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       }
 
       // Modulo Fattura
